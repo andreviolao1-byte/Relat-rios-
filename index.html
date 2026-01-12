@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Relatórios UPS/GMG</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --primary: #3498db; --success: #27ae60; --danger: #e74c3c; --warning: #f39c12; --dark: #2c3e50; --light: #ecf0f1; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f5f5f5; line-height: 1.6; }
+        .main-nav { background: linear-gradient(135deg, var(--dark), #1a252f); padding: 15px 20px; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
+        .nav-container { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
+        .nav-brand { color: white; font-size: 1.2em; font-weight: bold; }
+        .nav-tabs { display: flex; gap: 5px; flex-wrap: wrap; }
+        .nav-tab { padding: 8px 15px; background: rgba(255,255,255,0.1); color: white; border: none; border-radius: 6px; cursor: pointer; transition: all 0.3s; font-size: 13px; }
+        .nav-tab:hover { background: rgba(255,255,255,0.2); }
+        .nav-tab.active { background: var(--primary); }
+        .panel { display: none; max-width: 1200px; margin: 20px auto; padding: 0 20px; }
+        .panel.active { display: block; }
+        .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .stat-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; }
+        .stat-icon { font-size: 2em; margin-bottom: 8px; }
+        .stat-number { font-size: 2em; font-weight: bold; color: var(--dark); }
+        .stat-label { color: #7f8c8d; font-size: 0.9em; }
+        .data-table-container { background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden; margin-bottom: 20px; }
+        .table-header { background: var(--dark); color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .table-header h2 { font-size: 1.1em; }
+        .search-box input { padding: 8px 12px; border: none; border-radius: 6px; width: 200px; font-size: 13px; }
+        .data-table { width: 100%; border-collapse: collapse; }
+        .data-table th { background: #f8f9fa; padding: 12px; text-align: left; font-weight: 600; color: var(--dark); border-bottom: 2px solid #e9ecef; font-size: 13px; }
+        .data-table td { padding: 12px; border-bottom: 1px solid #e9ecef; font-size: 13px; }
+        .data-table tr:hover { background: #f8f9fa; }
+        .btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; transition: all 0.3s; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-warning { background: var(--warning); color: white; }
+        .btn-sm { padding: 5px 10px; font-size: 12px; }
+        .btn-group { display: flex; gap: 5px; }
+        .form-container { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .section { margin-bottom: 25px; }
+        .section-title { background: var(--primary); color: white; padding: 10px 15px; margin-bottom: 15px; border-radius: 6px; font-size: 1em; font-weight: bold; }
+        .form-group { margin-bottom: 12px; }
+        label { display: block; font-weight: 600; color: #34495e; margin-bottom: 4px; font-size: 13px; }
+        input[type="text"], input[type="email"], input[type="tel"], input[type="number"], input[type="datetime-local"], textarea, select { width: 100%; padding: 10px; border: 2px solid #e9ecef; border-radius: 6px; font-size: 13px; }
+        input:focus, select:focus, textarea:focus { border-color: var(--primary); outline: none; }
+        textarea { resize: vertical; min-height: 80px; }
+        .radio-group { display: flex; gap: 15px; margin-top: 5px; flex-wrap: wrap; }
+        .radio-group label { display: flex; align-items: center; gap: 4px; font-weight: normal; cursor: pointer; font-size: 13px; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+        .grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; }
+        .grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+        @media (max-width: 768px) { .grid-2, .grid-3, .grid-4, .grid-5 { grid-template-columns: 1fr; } }
+        .selector-box { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 15px; border-radius: 10px; margin-bottom: 20px; color: white; }
+        .selector-box h3 { margin-bottom: 12px; font-size: 1em; }
+        .selector-box select, .selector-box input { background: white; color: var(--dark); }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; justify-content: center; align-items: center; }
+        .modal.active { display: flex; }
+        .modal-content { background: white; padding: 25px; border-radius: 12px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #e9ecef; }
+        .modal-close { background: none; border: none; font-size: 1.5em; cursor: pointer; color: #7f8c8d; }
+        .logo-preview { max-width: 150px; max-height: 80px; margin-top: 8px; border: 1px solid #ddd; border-radius: 4px; display: none; }
+        .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        @media (max-width: 768px) { .charts-grid { grid-template-columns: 1fr; } }
+        .chart-container { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .chart-title { font-size: 0.9em; font-weight: bold; color: var(--dark); margin-bottom: 10px; text-align: center; }
+        .photo-upload-area { border: 2px dashed var(--primary); border-radius: 8px; padding: 15px; text-align: center; background: #f8f9fa; }
+        .photo-preview-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-top: 10px; }
+        .photo-item { position: relative; border: 1px solid #ddd; border-radius: 6px; padding: 8px; background: white; }
+        .photo-item img { width: 100%; height: 100px; object-fit: cover; border-radius: 4px; }
+        .photo-item input { margin-top: 5px; font-size: 11px; }
+        .photo-item button { position: absolute; top: 3px; right: 3px; background: var(--danger); color: white; border: none; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; font-size: 12px; }
+        .signature-pad { border: 2px solid #ddd; border-radius: 4px; cursor: crosshair; background: white; display: block; margin-top: 5px; }
+        .gps-info { background: var(--light); padding: 8px; border-radius: 4px; margin-top: 5px; font-size: 13px; }
+        .last-report-card { background: linear-gradient(135deg, #11998e, #38ef7d); color: white; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+        .toast { position: fixed; bottom: 20px; right: 20px; padding: 12px 20px; border-radius: 8px; color: white; font-weight: 500; z-index: 3000; animation: slideIn 0.3s ease; }
+        .toast-success { background: var(--success); }
+        .toast-error { background: var(--danger); }
+        .toast-info { background: var(--primary); }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .empty-state { text-align: center; padding: 40px 20px; color: #7f8c8d; }
+        .empty-state-icon { font-size: 3em; margin-bottom: 15px; }
+        .badge { padding: 4px 10px; border-radius: 15px; font-size: 11px; font-weight: 600; }
+        .badge-success { background: #d4edda; color: #155724; }
+        .badge-danger { background: #f8d7da; color: #721c24; }
+        .descarga-box { margin-top: 20px; padding: 15px; background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); border-radius: 10px; }
+        .descarga-box h4 { color: white; margin-bottom: 12px; font-size: 0.95em; }
+        .descarga-box label { color: #ffd700; font-size: 11px; }
+        .descarga-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+        .descarga-stat { background: rgba(255,255,255,0.9); padding: 10px; border-radius: 6px; text-align: center; }
+        .descarga-stat strong { display: block; font-size: 11px; margin-bottom: 3px; }
+        .descarga-stat span { font-size: 1.1em; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <!-- NAVEGAÇÃO -->
+    <nav class="main-nav">
+        <div class="nav-container">
+            <div class="nav-brand">⚡ Sistema de Relatórios</div>
+            <div class="nav-tabs">
+                <button class="nav-tab active" onclick="showPanel('dashboard')">📊 Dashboard</button>
+                <button class="nav-tab" onclick="showPanel('novo-relatorio')">📝 Novo</button>
+                <button class="nav-tab" onclick="showPanel('historico')">📋 Histórico</button>
+                <button class="nav-tab" onclick="showPanel('empresas')">🏢 Empresas</button>
+                <button class="nav-tab" onclick="showPanel('clientes')">👥 Clientes</button>
+                <button class="nav-tab" onclick="showPanel('ativos')">🔌 Ativos</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- DASHBOARD -->
+    <div id="panel-dashboard" class="panel active">
+        <div class="dashboard-grid">
+            <div class="stat-card"><div class="stat-icon">📄</div><div class="stat-number" id="totalRelatorios">0</div><div class="stat-label">Relatórios</div></div>
+            <div class="stat-card"><div class="stat-icon">🏢</div><div class="stat-number" id="totalEmpresas">0</div><div class="stat-label">Empresas</div></div>
+            <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-number" id="totalClientes">0</div><div class="stat-label">Clientes</div></div>
+            <div class="stat-card"><div class="stat-icon">🔌</div><div class="stat-number" id="totalAtivos">0</div><div class="stat-label">Ativos</div></div>
+        </div>
+        <div class="last-report-card" id="lastReportCard" style="display: none;">
+            <h3 style="font-size: 1em;">🕐 Último Relatório</h3>
+            <div id="lastReportInfo" style="margin-top: 10px;"></div>
+            <button class="btn btn-warning btn-sm" style="margin-top: 10px;" onclick="loadLastReport()">📂 Carregar</button>
+        </div>
+        <div class="data-table-container">
+            <div class="table-header"><h2>📋 Relatórios Recentes</h2></div>
+            <table class="data-table">
+                <thead><tr><th>Data</th><th>Empresa</th><th>Cliente</th><th>Ativo</th><th>Ações</th></tr></thead>
+                <tbody id="recentReportsBody"><tr><td colspan="5" class="empty-state"><div class="empty-state-icon">📭</div><p>Nenhum relatório</p></td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- HISTÓRICO -->
+    <div id="panel-historico" class="panel">
+        <div class="data-table-container">
+            <div class="table-header">
+                <h2>📋 Histórico</h2>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="searchHistorico" placeholder="Buscar..." oninput="filterHistorico()" style="padding: 8px; border-radius: 6px; border: none;">
+                    <button class="btn btn-danger btn-sm" onclick="clearAllReports()">🗑️</button>
+                </div>
+            </div>
+            <div style="overflow-x: auto;">
+                <table class="data-table">
+                    <thead><tr><th>Data</th><th>Empresa</th><th>Cliente</th><th>Ativo</th><th>Tipo</th><th>Ações</th></tr></thead>
+                    <tbody id="historicoBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- EMPRESAS -->
+    <div id="panel-empresas" class="panel">
+        <div class="data-table-container">
+            <div class="table-header">
+                <h2>🏢 Empresas Cadastradas</h2>
+                <button class="btn btn-success" onclick="openEmpresaModal()">➕ Nova Empresa</button>
+            </div>
+            <div style="overflow-x: auto;">
+                <table class="data-table">
+                    <thead><tr><th>Nome</th><th>CNPJ</th><th>E-mail</th><th>Telefone</th><th>Ações</th></tr></thead>
+                    <tbody id="empresasBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- CLIENTES -->
+    <div id="panel-clientes" class="panel">
+        <div class="data-table-container">
+            <div class="table-header">
+                <h2>👥 Clientes</h2>
+                <button class="btn btn-success" onclick="openClienteModal()">➕ Novo Cliente</button>
+            </div>
+            <table class="data-table">
+                <thead><tr><th>Nome</th><th>E-mail</th><th>Telefone</th><th>Endereço</th><th>Ações</th></tr></thead>
+                <tbody id="clientesBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ATIVOS -->
+    <div id="panel-ativos" class="panel">
+        <div class="data-table-container">
+            <div class="table-header">
+                <h2>🔌 Ativos</h2>
+                <button class="btn btn-success" onclick="openAtivoModal()">➕ Novo Ativo</button>
+            </div>
+            <div style="overflow-x: auto;">
+                <table class="data-table">
+                    <thead><tr><th>Nome</th><th>Cliente</th><th>Marca</th><th>Modelo</th><th>Local</th><th>Ações</th></tr></thead>
+                    <tbody id="ativosBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL EMPRESA -->
+    <div id="modalEmpresa" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h3>🏢 Cadastrar Empresa</h3><button class="modal-close" onclick="closeModal('modalEmpresa')">&times;</button></div>
+            <form id="formEmpresa">
+                <div class="form-group"><label>Nome Fantasia:</label><input type="text" id="empresaNomeFantasia" required></div>
+                <div class="form-group"><label>Razão Social:</label><input type="text" id="empresaRazao"></div>
+                <div class="form-group"><label>CNPJ:</label><input type="text" id="empresaCnpj"></div>
+                <div class="form-group"><label>E-mail:</label><input type="email" id="empresaEmail"></div>
+                <div class="form-group"><label>Telefone:</label><input type="tel" id="empresaTelefone"></div>
+                <div class="form-group"><label>Endereço:</label><input type="text" id="empresaEndereco"></div>
+                <div class="form-group"><label>Responsável Técnico:</label><input type="text" id="empresaRT"></div>
+                <div class="form-group"><label>Registro (CREA/CFT):</label><input type="text" id="empresaRegistro"></div>
+                <button type="button" class="btn btn-success" style="width: 100%;" onclick="saveEmpresa()">💾 Salvar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL CLIENTE -->
+    <div id="modalCliente" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h3>👤 Cadastrar Cliente</h3><button class="modal-close" onclick="closeModal('modalCliente')">&times;</button></div>
+            <form id="formCliente">
+                <div class="form-group"><label>Nome:</label><input type="text" id="clienteNome" required></div>
+                <div class="form-group"><label>E-mail:</label><input type="email" id="clienteEmail"></div>
+                <div class="form-group"><label>Telefone:</label><input type="tel" id="clienteTel"></div>
+                <div class="form-group"><label>Endereço:</label><input type="text" id="clienteEndereco"></div>
+                <button type="button" class="btn btn-success" style="width: 100%;" onclick="saveCliente()">💾 Salvar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL ATIVO -->
+    <div id="modalAtivo" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h3>🔌 Cadastrar Ativo</h3><button class="modal-close" onclick="closeModal('modalAtivo')">&times;</button></div>
+            <form id="formAtivo">
+                <div class="form-group"><label>Cliente:</label><select id="ativoCliente" required></select></div>
+                <div class="form-group"><label>Nome do Ativo:</label><input type="text" id="ativoNome" required></div>
+                <div class="grid-2">
+                    <div class="form-group"><label>Marca:</label><input type="text" id="ativoMarca"></div>
+                    <div class="form-group"><label>Modelo:</label><input type="text" id="ativoModelo"></div>
+                </div>
+                <div class="grid-2">
+                    <div class="form-group"><label>Potência:</label><input type="text" id="ativoPotencia"></div>
+                    <div class="form-group"><label>Patrimônio/Série:</label><input type="text" id="ativoPatrimonio"></div>
+                </div>
+                <div class="form-group"><label>Local:</label><input type="text" id="ativoLocal"></div>
+                <div class="form-group"><label>Info Adicional:</label><textarea id="ativoInfo"></textarea></div>
+                <button type="button" class="btn btn-success" style="width: 100%;" onclick="saveAtivo()">💾 Salvar</button>
+            </form>
+        </div>
+    </div>
+    <!-- FORMULÁRIO NOVO RELATÓRIO -->
+    <div id="panel-novo-relatorio" class="panel">
+        <div class="form-container">
+            <h1 style="color: var(--dark); border-bottom: 3px solid var(--primary); padding-bottom: 10px; margin-bottom: 20px; font-size: 1.3em;">
+                📝 Novo Relatório de Manutenção
+            </h1>
+            
+            <!-- SELETORES RÁPIDOS -->
+            <div class="selector-box">
+                <h3>⚡ Preenchimento Rápido</h3>
+                <div class="grid-3">
+                    <div class="form-group">
+                        <label style="color: white;">Empresa:</label>
+                        <select id="selectEmpresa" onchange="preencherEmpresa()"><option value="">-- Selecione --</option></select>
+                    </div>
+                    <div class="form-group">
+                        <label style="color: white;">Cliente:</label>
+                        <select id="selectCliente" onchange="preencherCliente()"><option value="">-- Selecione --</option></select>
+                    </div>
+                    <div class="form-group">
+                        <label style="color: white;">Ativo:</label>
+                        <select id="selectAtivo" onchange="preencherAtivo()"><option value="">-- Selecione cliente --</option></select>
+                    </div>
+                </div>
+            </div>
+
+            <form id="upsForm">
+                <!-- EMPRESA -->
+                <div class="section">
+                    <div class="section-title">🏢 Empresa Responsável</div>
+                    <div class="form-group"><label>Logo:</label><input type="file" id="logoUpload" accept="image/*"><img id="logoPreview" class="logo-preview"></div>
+                    <div class="grid-2">
+                        <div class="form-group"><label>Nome Fantasia:</label><input type="text" name="empresa_nome"></div>
+                        <div class="form-group"><label>Razão Social:</label><input type="text" name="empresa_razao"></div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group"><label>CNPJ:</label><input type="text" name="empresa_cnpj"></div>
+                        <div class="form-group"><label>E-mail:</label><input type="email" name="empresa_email"></div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group"><label>Telefone:</label><input type="tel" name="empresa_tel"></div>
+                        <div class="form-group"><label>Endereço:</label><input type="text" name="empresa_endereco"></div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group"><label>Responsável Técnico:</label><input type="text" name="empresa_rt"></div>
+                        <div class="form-group"><label>Registro CREA/CFT:</label><input type="text" name="empresa_registro"></div>
+                    </div>
+                </div>
+
+                <!-- CLIENTE -->
+                <div class="section">
+                    <div class="section-title">👤 Cliente</div>
+                    <div class="form-group"><label>Nome:</label><input type="text" name="cliente_nome" required></div>
+                    <div class="grid-2">
+                        <div class="form-group"><label>E-mail:</label><input type="email" name="cliente_email"></div>
+                        <div class="form-group"><label>Telefone:</label><input type="tel" name="cliente_tel"></div>
+                    </div>
+                    <div class="form-group"><label>Endereço:</label><input type="text" name="cliente_endereco"></div>
+                </div>
+
+                <!-- LOCAL -->
+                <div class="section">
+                    <div class="section-title">📍 Local</div>
+                    <div class="form-group"><label>Nome do Local:</label><input type="text" name="local_nome"></div>
+                </div>
+
+                <!-- ATIVO -->
+                <div class="section">
+                    <div class="section-title">🔌 Ativo</div>
+                    <div class="grid-2">
+                        <div class="form-group"><label>Nome do Ativo:</label><input type="text" name="ativo_nome" required></div>
+                        <div class="form-group"><label>Local do Ativo:</label><input type="text" name="ativo_local"></div>
+                    </div>
+                    <div class="grid-4">
+                        <div class="form-group"><label>Marca:</label><input type="text" name="ativo_marca"></div>
+                        <div class="form-group"><label>Modelo:</label><input type="text" name="ativo_modelo"></div>
+                        <div class="form-group"><label>Potência:</label><input type="text" name="ativo_potencia"></div>
+                        <div class="form-group"><label>Patrimônio:</label><input type="text" name="ativo_patrimonio"></div>
+                    </div>
+                    <div class="form-group"><label>Info Adicional:</label><textarea name="ativo_info"></textarea></div>
+                </div>
+
+                <!-- MANUTENÇÃO -->
+                <div class="section">
+                    <div class="section-title">🔧 Manutenção</div>
+                    <div class="form-group">
+                        <label>Tipo:</label>
+                        <select name="tipo_manutencao" required>
+                            <option value="">Selecione...</option>
+                            <option value="Preventiva sem parada">Preventiva sem parada</option>
+                            <option value="Preventiva com parada">Preventiva com parada</option>
+                            <option value="Corretiva">Corretiva</option>
+                            <option value="Emergencial">Emergencial</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>EPI's:</label><div class="radio-group"><label><input type="radio" name="epi_check" value="Conforme"> Conforme</label><label><input type="radio" name="epi_check" value="Não Conforme"> Não Conforme</label><label><input type="radio" name="epi_check" value="N/A"> N/A</label></div></div>
+                    <div class="form-group"><label>Condições Inseguras:</label><div class="radio-group"><label><input type="radio" name="cond_inseguras" value="Conforme"> Conforme</label><label><input type="radio" name="cond_inseguras" value="Não Conforme"> Não Conforme</label><label><input type="radio" name="cond_inseguras" value="N/A"> N/A</label></div></div>
+                </div>
+
+                <!-- MEDIÇÕES ENTRADA -->
+                <div class="section">
+                    <div class="section-title">📥 Medições de Entrada</div>
+                    <div class="grid-4">
+                        <div class="form-group"><label>Tensão RS (V):</label><input type="number" step="0.1" name="ent_tensao_rs"></div>
+                        <div class="form-group"><label>Tensão ST (V):</label><input type="number" step="0.1" name="ent_tensao_st"></div>
+                        <div class="form-group"><label>Tensão RT (V):</label><input type="number" step="0.1" name="ent_tensao_rt"></div>
+                        <div class="form-group"><label>Frequência (Hz):</label><input type="number" step="0.1" name="ent_frequencia"></div>
+                    </div>
+                    <div class="grid-3">
+                        <div class="form-group"><label>Corrente R (A):</label><input type="number" step="0.1" name="ent_corrente_r"></div>
+                        <div class="form-group"><label>Corrente S (A):</label><input type="number" step="0.1" name="ent_corrente_s"></div>
+                        <div class="form-group"><label>Corrente T (A):</label><input type="number" step="0.1" name="ent_corrente_t"></div>
+                    </div>
+                </div>
+
+                <!-- MEDIÇÕES SAÍDA -->
+                <div class="section">
+                    <div class="section-title">📤 Medições de Saída</div>
+                    <div class="grid-4">
+                        <div class="form-group"><label>Tensão RS (V):</label><input type="number" step="0.1" name="sai_tensao_rs"></div>
+                        <div class="form-group"><label>Tensão ST (V):</label><input type="number" step="0.1" name="sai_tensao_st"></div>
+                        <div class="form-group"><label>Tensão RT (V):</label><input type="number" step="0.1" name="sai_tensao_rt"></div>
+                        <div class="form-group"><label>Frequência (Hz):</label><input type="number" step="0.1" name="sai_frequencia"></div>
+                    </div>
+                    <div class="grid-3">
+                        <div class="form-group"><label>Corrente R (A):</label><input type="number" step="0.1" name="sai_corrente_r"></div>
+                        <div class="form-group"><label>Corrente S (A):</label><input type="number" step="0.1" name="sai_corrente_s"></div>
+                        <div class="form-group"><label>Corrente T (A):</label><input type="number" step="0.1" name="sai_corrente_t"></div>
+                    </div>
+                </div>
+
+                <!-- BATERIAS -->
+                <div class="section">
+                    <div class="section-title">🔋 Banco de Baterias</div>
+                    <div class="grid-4">
+                        <div class="form-group"><label>Tensão Total (Vcc):</label><input type="number" step="0.1" name="bat_tensao_total"></div>
+                        <div class="form-group"><label>Corrente Flutuação (A):</label><input type="number" step="0.1" name="bat_corrente_flutuacao"></div>
+                        <div class="form-group"><label>Tensão Média/Bat:</label><input type="number" step="0.1" name="bat_tensao_media"></div>
+                        <div class="form-group"><label>Impedância Média (mΩ):</label><input type="number" step="0.01" name="bat_impedancia_media"></div>
+                    </div>
+                    <div class="form-group"><label>Cabos e conexões:</label><div class="radio-group"><label><input type="radio" name="bat_cabos" value="Conforme"> Conforme</label><label><input type="radio" name="bat_cabos" value="Não Conforme"> Não Conforme</label><label><input type="radio" name="bat_cabos" value="N/A"> N/A</label></div></div>
+                    <div class="form-group"><label>Carregador:</label><div class="radio-group"><label><input type="radio" name="bat_carregador" value="Conforme"> Conforme</label><label><input type="radio" name="bat_carregador" value="Não Conforme"> Não Conforme</label><label><input type="radio" name="bat_carregador" value="N/A"> N/A</label></div></div>
+                    <div class="form-group"><label>Limpeza:</label><div class="radio-group"><label><input type="radio" name="bat_limpeza" value="Conforme"> Conforme</label><label><input type="radio" name="bat_limpeza" value="Não Conforme"> Não Conforme</label><label><input type="radio" name="bat_limpeza" value="N/A"> N/A</label></div></div>
+                    
+                    <!-- TESTE DE DESCARGA -->
+                    <div class="descarga-box">
+                        <h4>📉 Teste de Descarga de Baterias</h4>
+                        <div class="grid-2" style="margin-bottom: 10px;">
+                            <div class="form-group">
+                                <label style="color: white;">Intervalo (min):</label>
+                                <select id="descargaIntervalo" name="descarga_intervalo" onchange="updateDescargaLabels()" style="background: white;">
+                                    <option value="1">1 min</option>
+                                    <option value="2">2 min</option>
+                                    <option value="5" selected>5 min</option>
+                                    <option value="10">10 min</option>
+                                    <option value="15">15 min</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label style="color: white;">Tensão Nominal (Vcc):</label>
+                                <input type="number" step="0.1" name="descarga_tensao_nominal" id="descargaTensaoNominal" placeholder="Ex: 240" style="background: white;" onchange="updateDescargaChart()">
+                            </div>
+                        </div>
+                        <div class="grid-5">
+                            <div class="form-group"><label id="lblDescarga1">0 min</label><input type="number" step="0.1" name="descarga_v1" id="descargaV1" placeholder="Vcc" style="background: white; text-align: center;" oninput="updateDescargaChart()"></div>
+                            <div class="form-group"><label id="lblDescarga2">5 min</label><input type="number" step="0.1" name="descarga_v2" id="descargaV2" placeholder="Vcc" style="background: white; text-align: center;" oninput="updateDescargaChart()"></div>
+                            <div class="form-group"><label id="lblDescarga3">10 min</label><input type="number" step="0.1" name="descarga_v3" id="descargaV3" placeholder="Vcc" style="background: white; text-align: center;" oninput="updateDescargaChart()"></div>
+                            <div class="form-group"><label id="lblDescarga4">15 min</label><input type="number" step="0.1" name="descarga_v4" id="descargaV4" placeholder="Vcc" style="background: white; text-align: center;" oninput="updateDescargaChart()"></div>
+                            <div class="form-group"><label id="lblDescarga5">20 min</label><input type="number" step="0.1" name="descarga_v5" id="descargaV5" placeholder="Vcc" style="background: white; text-align: center;" oninput="updateDescargaChart()"></div>
+                        </div>
+                        <div style="background: white; padding: 15px; border-radius: 8px; margin-top: 10px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <span style="font-weight: bold; font-size: 13px;">📊 Curva de Descarga</span>
+                                <div id="descargaStatus" style="font-size: 11px; padding: 4px 10px; border-radius: 12px; background: #e9ecef;">Aguardando...</div>
+                            </div>
+                            <canvas id="chartDescarga" height="180"></canvas>
+                            <div class="descarga-stats">
+                                <div class="descarga-stat"><strong style="color: #3498db;">Queda Total</strong><span id="descargaQueda">-- V</span></div>
+                                <div class="descarga-stat"><strong style="color: #27ae60;">Taxa Média</strong><span id="descargaTaxa">-- V/min</span></div>
+                                <div class="descarga-stat"><strong style="color: #f39c12;">Autonomia</strong><span id="descargaAutonomia">-- min</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- OPERAÇÃO UPS -->
+                <div class="section">
+                    <div class="section-title">⚙️ Operação da UPS</div>
+                    <div class="form-group"><label>Transferência Bypass:</label><div class="radio-group"><label><input type="radio" name="op_transf_bypass" value="Conforme"> Conforme</label><label><input type="radio" name="op_transf_bypass" value="Não Conforme"> Não Conforme</label><label><input type="radio" name="op_transf_bypass" value="N/A"> N/A</label></div></div>
+                    <div class="form-group"><label>Transferência Inversor:</label><div class="radio-group"><label><input type="radio" name="op_transf_inversor" value="Conforme"> Conforme</label><label><input type="radio" name="op_transf_inversor" value="Não Conforme"> Não Conforme</label><label><input type="radio" name="op_transf_inversor" value="N/A"> N/A</label></div></div>
+                    <div class="form-group"><label>Modo Inversor:</label><div class="radio-group"><label><input type="radio" name="op_modo_inversor" value="Conforme"> Conforme</label><label><input type="radio" name="op_modo_inversor" value="Não Conforme"> Não Conforme</label><label><input type="radio" name="op_modo_inversor" value="N/A"> N/A</label></div></div>
+                    <div class="form-group"><label>SNMP:</label><div class="radio-group"><label><input type="radio" name="op_snmp" value="Conforme"> Conforme</label><label><input type="radio" name="op_snmp" value="Não Conforme"> Não Conforme</label><label><input type="radio" name="op_snmp" value="N/A"> N/A</label></div></div>
+                </div>
+
+                <!-- CONDIÇÕES GERAIS -->
+                <div class="section">
+                    <div class="section-title">🔍 Condições Gerais</div>
+                    <div class="form-group"><label>Contatos e conexões:</label><div class="radio-group"><label><input type="radio" name="cond_contatos" value="Conforme"> Conforme</label><label><input type="radio" name="cond_contatos" value="Não Conforme"> Não Conforme</label><label><input type="radio" name="cond_contatos" value="N/A"> N/A</label></div></div>
+                    <div class="form-group"><label>Ruídos anormais:</label><div class="radio-group"><label><input type="radio" name="cond_ruidos" value="Conforme"> Conforme</label><label><input type="radio" name="cond_ruidos" value="Não Conforme"> Não Conforme</label><label><input type="radio" name="cond_ruidos" value="N/A"> N/A</label></div></div>
+                    <div class="form-group"><label>Transformador:</label><div class="radio-group"><label><input type="radio" name="cond_transformador" value="Conforme"> Conforme</label><label><input type="radio" name="cond_transformador" value="Não Conforme"> Não Conforme</label><label><input type="radio" name="cond_transformador" value="N/A"> N/A</label></div></div>
+                    <div class="form-group"><label>Placas de controle:</label><div class="radio-group"><label><input type="radio" name="cond_placas" value="Conforme"> Conforme</label><label><input type="radio" name="cond_placas" value="Não Conforme"> Não Conforme</label><label><input type="radio" name="cond_placas" value="N/A"> N/A</label></div></div>
+                    <div class="form-group"><label>Coolers:</label><div class="radio-group"><label><input type="radio" name="cond_coolers" value="Conforme"> Conforme</label><label><input type="radio" name="cond_coolers" value="Não Conforme"> Não Conforme</label><label><input type="radio" name="cond_coolers" value="N/A"> N/A</label></div></div>
+                </div>
+
+                <!-- AMBIENTE -->
+                <div class="section">
+                    <div class="section-title">🌡️ Ambiente</div>
+                    <div class="form-group"><label>Estado:</label><div class="radio-group"><label><input type="radio" name="amb_estado" value="Adequado"> Adequado</label><label><input type="radio" name="amb_estado" value="Inadequado"> Inadequado</label></div></div>
+                    <div class="form-group"><label>Temperatura:</label><div class="radio-group"><label><input type="radio" name="amb_temperatura" value="Conforme"> Conforme</label><label><input type="radio" name="amb_temperatura" value="Não Conforme"> Não Conforme</label></div></div>
+                    <div class="form-group"><label>Local Restrito:</label><div class="radio-group"><label><input type="radio" name="amb_restrito" value="Sim"> Sim</label><label><input type="radio" name="amb_restrito" value="Não"> Não</label></div></div>
+                </div>
+
+                <!-- GRÁFICOS -->
+                <div class="section">
+                    <div class="section-title">📊 Gráficos</div>
+                    <div class="charts-grid">
+                        <div class="chart-container"><div class="chart-title">Tensões Entrada</div><canvas id="chartTensoesRede"></canvas></div>
+                        <div class="chart-container"><div class="chart-title">Correntes Entrada</div><canvas id="chartCorrentesRede"></canvas></div>
+                    </div>
+                    <div class="charts-grid">
+                        <div class="chart-container"><div class="chart-title">Tensões Saída</div><canvas id="chartTensoesUPS"></canvas></div>
+                        <div class="chart-container"><div class="chart-title">Correntes Saída</div><canvas id="chartCorrentesUPS"></canvas></div>
+                    </div>
+                </div>
+
+                <!-- FOTOS -->
+                <div class="section">
+                    <div class="section-title">📸 Fotos</div>
+                    <div class="photo-upload-area">
+                        <p><strong>📸 Adicionar fotos</strong></p>
+                        <input type="file" id="photosUpload" accept="image/*" multiple style="margin-top: 8px;">
+                        <div id="photoCounter" style="margin-top: 8px; font-weight: bold; font-size: 13px;">0 foto(s)</div>
+                        <button type="button" class="btn btn-danger btn-sm" onclick="clearAllPhotos()" style="margin-top: 8px;">Limpar</button>
+                    </div>
+                    <div class="photo-preview-container" id="photoPreviewContainer"></div>
+                </div>
+
+                <!-- OBSERVAÇÕES -->
+                <div class="section">
+                    <div class="section-title">📝 Observações</div>
+                    <div class="form-group"><textarea name="observacoes" placeholder="Descreva as atividades realizadas..."></textarea></div>
+                </div>
+
+                <!-- GPS -->
+                <div class="section">
+                    <div class="section-title">📍 Localização</div>
+                    <div class="form-group">
+                        <button type="button" onclick="getLocation()" class="btn btn-primary btn-sm">📍 Capturar GPS</button>
+                        <div id="gpsInfo" class="gps-info" style="display:none;"></div>
+                        <input type="hidden" name="gps_coords" id="gpsCoords">
+                    </div>
+                </div>
+
+                <!-- HORÁRIOS -->
+                <div class="section">
+                    <div class="section-title">⏰ Horários</div>
+                    <div class="grid-2">
+                        <div class="form-group"><label>Início:</label><input type="datetime-local" name="hora_inicio" required></div>
+                        <div class="form-group"><label>Fim:</label><input type="datetime-local" name="hora_fim" required></div>
+                    </div>
+                </div>
+
+                <!-- ASSINATURAS -->
+                <div class="section">
+                    <div class="section-title">✍️ Assinaturas</div>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label>Técnico:</label><input type="text" name="nome_tecnico" required>
+                            <canvas id="signatureTecnico" class="signature-pad" width="300" height="80"></canvas>
+                            <button type="button" class="btn btn-danger btn-sm" style="margin-top: 5px;" onclick="clearSignature('signatureTecnico')">Limpar</button>
+                        </div>
+                        <div class="form-group">
+                            <label>Cliente:</label><input type="text" name="nome_cliente">
+                            <canvas id="signatureCliente" class="signature-pad" width="300" height="80"></canvas>
+                            <button type="button" class="btn btn-danger btn-sm" style="margin-top: 5px;" onclick="clearSignature('signatureCliente')">Limpar</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BOTÕES -->
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px;">
+                    <button type="button" class="btn btn-success" style="flex: 1; padding: 12px;" onclick="generatePDF()">📄 Gerar PDF</button>
+                    <button type="button" class="btn btn-primary" style="flex: 1; padding: 12px;" onclick="saveReport()">💾 Salvar</button>
+                    <button type="button" class="btn btn-warning btn-sm" onclick="saveAsEmpresa()">🏢+</button>
+                    <button type="button" class="btn btn-warning btn-sm" onclick="saveAsCliente()">👤+</button>
+                    <button type="button" class="btn btn-warning btn-sm" onclick="saveAsAtivo()">🔌+</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <script>
+        // DADOS PRÉ-CADASTRADOS
+        const EMPRESAS_PADRAO = [
+            {
+                nomeFantasia: "Angera Soluções Elétricas Eficientes",
+                razao: "58.261.416 ANDRE LUIZ MOREIRA BOGEA",
+                cnpj: "58.261.416/0001-43",
+                email: "andre.angera@gmail.com",
+                telefone: "(61) 99127-2350",
+                endereco: "QR 212, Samambaia – DF",
+                rt: "ANDRÉ LUIZ MOREIRA BOGÉA - Engenheiro Eletricista",
+                registro: "CREA 32943/D-DF | RNP 0721488021"
+            },
+            {
+                nomeFantasia: "Power Safety",
+                razao: "POWER SAFETY SERVICOS E COMERCIO DE ELETROELETRONICOS LTDA",
+                cnpj: "03.629.664/0001-02",
+                email: "powersafety@powersafety.net.br",
+                telefone: "(61) 99618-2482",
+                endereco: "SAAN QUADRA 2 LOTE 1160 LOJA 3 GALPAO PARTE A, CEP 70632-200",
+                rt: "",
+                registro: "IE/IM: 07.589.346/001-19"
+            },
+            {
+                nomeFantasia: "Tecnicall Engenharia",
+                razao: "Tecnicall Engenharia Ltda.",
+                cnpj: "72.581.283/0001-13",
+                email: "rodrigo.seron@tecnicallengenharia.com.br",
+                telefone: "(61) 8218-7390",
+                endereco: "SHIS QI 5 CJ 20 LT 23 – Brasília – DF, CEP 71615-200",
+                rt: "",
+                registro: ""
+            }
+        ];
+
+        const CLIENTES_PADRAO = [
+            { nome: "Condomínio Vizion", email: "cap.vision@grupohplus.com.br", telefone: "(61) 9437-6618", endereco: "SHN Q. 1 Bloco F – Asa Norte, Brasília – DF, CEP 70701-000" },
+            { nome: "SESI – Bloco J", email: "rodrigo.seron@tecnicallengenharia.com.br", telefone: "(61) 8218-7390", endereco: "Quadra SBN Quadra 1, nº 1 – Asa Norte, Brasília – DF, CEP 70040-010" }
+        ];
+
+        const ATIVOS_PADRAO = [
+            { clienteNome: "Condomínio Vizion", nome: "GMG Vizion", marca: "STEMAC", modelo: "SCANIA", potencia: "500 kVA", patrimonio: "8721929", local: "Sala do gerador", info: "Grupo Motor Gerador STEMAC 500 kVA, motor SCANIA" },
+            { clienteNome: "SESI – Bloco J", nome: "No-break HDS", marca: "HDS", modelo: "NB 60", potencia: "60 kVA", patrimonio: "0200045837", local: "Sala do No-break", info: "UPS 60 kVA – SESI Bloco J" }
+        ];
+
+        // BANCO DE DADOS
+        const DB_NAME = 'UPSReportsDB_v3';
+        let db;
+        
+        function initDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, 1);
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => { db = request.result; resolve(db); };
+                request.onupgradeneeded = (e) => {
+                    const database = e.target.result;
+                    if (!database.objectStoreNames.contains('empresas')) database.createObjectStore('empresas', { keyPath: 'id', autoIncrement: true });
+                    if (!database.objectStoreNames.contains('clientes')) database.createObjectStore('clientes', { keyPath: 'id', autoIncrement: true });
+                    if (!database.objectStoreNames.contains('ativos')) database.createObjectStore('ativos', { keyPath: 'id', autoIncrement: true });
+                    if (!database.objectStoreNames.contains('relatorios')) database.createObjectStore('relatorios', { keyPath: 'id', autoIncrement: true });
+                };
+            });
+        }
+
+        function dbAdd(store, data) { return new Promise((r,j) => { const req = db.transaction(store,'readwrite').objectStore(store).add(data); req.onsuccess = () => r(req.result); req.onerror = () => j(req.error); }); }
+        function dbGetAll(store) { return new Promise((r,j) => { const req = db.transaction(store,'readonly').objectStore(store).getAll(); req.onsuccess = () => r(req.result); req.onerror = () => j(req.error); }); }
+        function dbGet(store, id) { return new Promise((r,j) => { const req = db.transaction(store,'readonly').objectStore(store).get(id); req.onsuccess = () => r(req.result); req.onerror = () => j(req.error); }); }
+        function dbDelete(store, id) { return new Promise((r,j) => { const req = db.transaction(store,'readwrite').objectStore(store).delete(id); req.onsuccess = () => r(); req.onerror = () => j(req.error); }); }
+        function dbClear(store) { return new Promise((r,j) => { const req = db.transaction(store,'readwrite').objectStore(store).clear(); req.onsuccess = () => r(); req.onerror = () => j(req.error); }); }
+
+        // CARREGAR DADOS PADRÃO
+        async function carregarDadosPadrao() {
+            const empresas = await dbGetAll('empresas');
+            if (empresas.length === 0) {
+                for (const emp of EMPRESAS_PADRAO) await dbAdd('empresas', emp);
+            }
+            const clientes = await dbGetAll('clientes');
+            if (clientes.length === 0) {
+                for (const cli of CLIENTES_PADRAO) await dbAdd('clientes', cli);
+            }
+            const ativos = await dbGetAll('ativos');
+            if (ativos.length === 0) {
+                const clientesDB = await dbGetAll('clientes');
+                for (const ativo of ATIVOS_PADRAO) {
+                    const cliente = clientesDB.find(c => c.nome === ativo.clienteNome);
+                    if (cliente) {
+                        await dbAdd('ativos', { ...ativo, clienteId: cliente.id });
+                    }
+                }
+            }
+        }
+
+        // NAVEGAÇÃO
+        function showPanel(panelId) {
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById('panel-' + panelId).classList.add('active');
+            event.target.classList.add('active');
+            if (panelId === 'dashboard') updateDashboard();
+            if (panelId === 'historico') loadHistorico();
+            if (panelId === 'empresas') loadEmpresas();
+            if (panelId === 'clientes') loadClientes();
+            if (panelId === 'ativos') loadAtivos();
+            if (panelId === 'novo-relatorio') { loadSelects(); createCharts(); }
+        }
+
+        // DASHBOARD
+        async function updateDashboard() {
+            const [relatorios, empresas, clientes, ativos] = await Promise.all([dbGetAll('relatorios'), dbGetAll('empresas'), dbGetAll('clientes'), dbGetAll('ativos')]);
+            document.getElementById('totalRelatorios').textContent = relatorios.length;
+            document.getElementById('totalEmpresas').textContent = empresas.length;
+            document.getElementById('totalClientes').textContent = clientes.length;
+            document.getElementById('totalAtivos').textContent = ativos.length;
+            
+            if (relatorios.length > 0) {
+                const ultimo = relatorios.sort((a, b) => new Date(b.data) - new Date(a.data))[0];
+                document.getElementById('lastReportCard').style.display = 'block';
+                document.getElementById('lastReportInfo').innerHTML = `<div style="font-size:13px;"><strong>${ultimo.empresaNome || ''}</strong> → ${ultimo.clienteNome || ''} → ${ultimo.ativoNome || ''}<br><small>${new Date(ultimo.data).toLocaleString('pt-BR')}</small></div>`;
+                window.lastReportId = ultimo.id;
+            }
+            
+            const recent = relatorios.slice(-5).reverse();
+            document.getElementById('recentReportsBody').innerHTML = recent.length === 0 ? 
+                '<tr><td colspan="5" class="empty-state"><div class="empty-state-icon">📭</div><p>Nenhum relatório</p></td></tr>' : 
+                recent.map(r => `<tr><td>${new Date(r.data).toLocaleDateString('pt-BR')}</td><td>${r.empresaNome || '-'}</td><td>${r.clienteNome || '-'}</td><td>${r.ativoNome || '-'}</td><td><div class="btn-group"><button class="btn btn-primary btn-sm" onclick="loadReport(${r.id})">📂</button><button class="btn btn-danger btn-sm" onclick="deleteReport(${r.id})">🗑️</button></div></td></tr>`).join('');
+        }
+
+        // EMPRESAS
+        async function loadEmpresas() {
+            const empresas = await dbGetAll('empresas');
+            document.getElementById('empresasBody').innerHTML = empresas.length === 0 ? 
+                '<tr><td colspan="5" class="empty-state"><div class="empty-state-icon">🏢</div><p>Nenhuma empresa</p></td></tr>' : 
+                empresas.map(e => `<tr><td><strong>${e.nomeFantasia}</strong></td><td>${e.cnpj || '-'}</td><td>${e.email || '-'}</td><td>${e.telefone || '-'}</td><td><button class="btn btn-danger btn-sm" onclick="deleteEmpresa(${e.id})">🗑️</button></td></tr>`).join('');
+        }
+
+        function openEmpresaModal() { document.getElementById('modalEmpresa').classList.add('active'); }
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+        async function saveEmpresa() {
+            const empresa = {
+                nomeFantasia: document.getElementById('empresaNomeFantasia').value,
+                razao: document.getElementById('empresaRazao').value,
+                cnpj: document.getElementById('empresaCnpj').value,
+                email: document.getElementById('empresaEmail').value,
+                telefone: document.getElementById('empresaTelefone').value,
+                endereco: document.getElementById('empresaEndereco').value,
+                rt: document.getElementById('empresaRT').value,
+                registro: document.getElementById('empresaRegistro').value
+            };
+            if (!empresa.nomeFantasia) { showToast('Nome obrigatório', 'error'); return; }
+            await dbAdd('empresas', empresa);
+            showToast('Empresa salva!', 'success');
+            closeModal('modalEmpresa');
+            document.getElementById('formEmpresa').reset();
+            loadEmpresas(); loadSelects();
+        }
+
+        async function saveAsEmpresa() {
+            const form = document.getElementById('upsForm');
+            const data = new FormData(form);
+            const empresa = {
+                nomeFantasia: data.get('empresa_nome'),
+                razao: data.get('empresa_razao'),
+                cnpj: data.get('empresa_cnpj'),
+                email: data.get('empresa_email'),
+                telefone: data.get('empresa_tel'),
+                endereco: data.get('empresa_endereco'),
+                rt: data.get('empresa_rt'),
+                registro: data.get('empresa_registro')
+            };
+            if (!empresa.nomeFantasia) { showToast('Preencha dados da empresa', 'error'); return; }
+            await dbAdd('empresas', empresa);
+            showToast('Empresa salva!', 'success');
+            loadSelects();
+        }
+
+        async function deleteEmpresa(id) { if (confirm('Excluir?')) { await dbDelete('empresas', id); showToast('Excluído', 'info'); loadEmpresas(); loadSelects(); } }
+        // CLIENTES
+        async function loadClientes() {
+            const clientes = await dbGetAll('clientes');
+            document.getElementById('clientesBody').innerHTML = clientes.length === 0 ? 
+                '<tr><td colspan="5" class="empty-state"><div class="empty-state-icon">👤</div><p>Nenhum cliente</p></td></tr>' : 
+                clientes.map(c => `<tr><td><strong>${c.nome}</strong></td><td>${c.email || '-'}</td><td>${c.telefone || '-'}</td><td>${c.endereco || '-'}</td><td><button class="btn btn-danger btn-sm" onclick="deleteCliente(${c.id})">🗑️</button></td></tr>`).join('');
+        }
+
+        function openClienteModal() { document.getElementById('modalCliente').classList.add('active'); }
+
+        async function saveCliente() {
+            const cliente = { nome: document.getElementById('clienteNome').value, email: document.getElementById('clienteEmail').value, telefone: document.getElementById('clienteTel').value, endereco: document.getElementById('clienteEndereco').value };
+            if (!cliente.nome) { showToast('Nome obrigatório', 'error'); return; }
+            await dbAdd('clientes', cliente);
+            showToast('Cliente salvo!', 'success');
+            closeModal('modalCliente');
+            document.getElementById('formCliente').reset();
+            loadClientes(); loadSelects();
+        }
+
+        async function saveAsCliente() {
+            const form = document.getElementById('upsForm');
+            const data = new FormData(form);
+            const cliente = { nome: data.get('cliente_nome'), email: data.get('cliente_email'), telefone: data.get('cliente_tel'), endereco: data.get('cliente_endereco') };
+            if (!cliente.nome) { showToast('Preencha dados do cliente', 'error'); return; }
+            await dbAdd('clientes', cliente);
+            showToast('Cliente salvo!', 'success');
+            loadSelects();
+        }
+
+        async function deleteCliente(id) { if (confirm('Excluir?')) { await dbDelete('clientes', id); showToast('Excluído', 'info'); loadClientes(); loadSelects(); } }
+
+        // ATIVOS
+        async function loadAtivos() {
+            const [ativos, clientes] = await Promise.all([dbGetAll('ativos'), dbGetAll('clientes')]);
+            document.getElementById('ativosBody').innerHTML = ativos.length === 0 ? 
+                '<tr><td colspan="6" class="empty-state"><div class="empty-state-icon">🔌</div><p>Nenhum ativo</p></td></tr>' : 
+                ativos.map(a => { const c = clientes.find(x => x.id === a.clienteId); return `<tr><td><strong>${a.nome}</strong></td><td>${c ? c.nome : '-'}</td><td>${a.marca || '-'}</td><td>${a.modelo || '-'}</td><td>${a.local || '-'}</td><td><button class="btn btn-danger btn-sm" onclick="deleteAtivo(${a.id})">🗑️</button></td></tr>`; }).join('');
+        }
+
+        async function openAtivoModal() {
+            const clientes = await dbGetAll('clientes');
+            document.getElementById('ativoCliente').innerHTML = '<option value="">-- Selecione --</option>' + clientes.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+            document.getElementById('modalAtivo').classList.add('active');
+        }
+
+        async function saveAtivo() {
+            const ativo = { clienteId: parseInt(document.getElementById('ativoCliente').value), nome: document.getElementById('ativoNome').value, marca: document.getElementById('ativoMarca').value, modelo: document.getElementById('ativoModelo').value, potencia: document.getElementById('ativoPotencia').value, patrimonio: document.getElementById('ativoPatrimonio').value, local: document.getElementById('ativoLocal').value, info: document.getElementById('ativoInfo').value };
+            if (!ativo.nome || !ativo.clienteId) { showToast('Nome e cliente obrigatórios', 'error'); return; }
+            await dbAdd('ativos', ativo);
+            showToast('Ativo salvo!', 'success');
+            closeModal('modalAtivo');
+            document.getElementById('formAtivo').reset();
+            loadAtivos(); loadSelects();
+        }
+
+        async function saveAsAtivo() {
+            const clienteId = parseInt(document.getElementById('selectCliente').value);
+            if (!clienteId) { showToast('Selecione um cliente', 'error'); return; }
+            const form = document.getElementById('upsForm');
+            const data = new FormData(form);
+            const ativo = { clienteId, nome: data.get('ativo_nome'), marca: data.get('ativo_marca'), modelo: data.get('ativo_modelo'), potencia: data.get('ativo_potencia'), patrimonio: data.get('ativo_patrimonio'), local: data.get('ativo_local'), info: data.get('ativo_info') };
+            if (!ativo.nome) { showToast('Preencha dados do ativo', 'error'); return; }
+            await dbAdd('ativos', ativo);
+            showToast('Ativo salvo!', 'success');
+            loadSelects();
+        }
+
+        async function deleteAtivo(id) { if (confirm('Excluir?')) { await dbDelete('ativos', id); showToast('Excluído', 'info'); loadAtivos(); loadSelects(); } }
+
+        // SELECTS DO FORMULÁRIO
+        async function loadSelects() {
+            const [empresas, clientes] = await Promise.all([dbGetAll('empresas'), dbGetAll('clientes')]);
+            document.getElementById('selectEmpresa').innerHTML = '<option value="">-- Selecione --</option>' + empresas.map(e => `<option value="${e.id}">${e.nomeFantasia}</option>`).join('');
+            document.getElementById('selectCliente').innerHTML = '<option value="">-- Selecione --</option>' + clientes.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+            document.getElementById('selectAtivo').innerHTML = '<option value="">-- Selecione cliente --</option>';
+        }
+
+        async function preencherEmpresa() {
+            const id = parseInt(document.getElementById('selectEmpresa').value);
+            if (!id) return;
+            const emp = await dbGet('empresas', id);
+            if (emp) {
+                document.querySelector('[name="empresa_nome"]').value = emp.nomeFantasia || '';
+                document.querySelector('[name="empresa_razao"]').value = emp.razao || '';
+                document.querySelector('[name="empresa_cnpj"]').value = emp.cnpj || '';
+                document.querySelector('[name="empresa_email"]').value = emp.email || '';
+                document.querySelector('[name="empresa_tel"]').value = emp.telefone || '';
+                document.querySelector('[name="empresa_endereco"]').value = emp.endereco || '';
+                document.querySelector('[name="empresa_rt"]').value = emp.rt || '';
+                document.querySelector('[name="empresa_registro"]').value = emp.registro || '';
+            }
+        }
+
+        async function preencherCliente() {
+            const id = parseInt(document.getElementById('selectCliente').value);
+            if (!id) { document.getElementById('selectAtivo').innerHTML = '<option value="">-- Selecione cliente --</option>'; return; }
+            const cli = await dbGet('clientes', id);
+            if (cli) {
+                document.querySelector('[name="cliente_nome"]').value = cli.nome || '';
+                document.querySelector('[name="cliente_email"]').value = cli.email || '';
+                document.querySelector('[name="cliente_tel"]').value = cli.telefone || '';
+                document.querySelector('[name="cliente_endereco"]').value = cli.endereco || '';
+            }
+            const ativos = await dbGetAll('ativos');
+            const ativosCliente = ativos.filter(a => a.clienteId === id);
+            document.getElementById('selectAtivo').innerHTML = '<option value="">-- Selecione --</option>' + ativosCliente.map(a => `<option value="${a.id}">${a.nome} - ${a.marca || ''}</option>`).join('');
+        }
+
+        async function preencherAtivo() {
+            const id = parseInt(document.getElementById('selectAtivo').value);
+            if (!id) return;
+            const ativo = await dbGet('ativos', id);
+            if (ativo) {
+                document.querySelector('[name="ativo_nome"]').value = ativo.nome || '';
+                document.querySelector('[name="ativo_marca"]').value = ativo.marca || '';
+                document.querySelector('[name="ativo_modelo"]').value = ativo.modelo || '';
+                document.querySelector('[name="ativo_potencia"]').value = ativo.potencia || '';
+                document.querySelector('[name="ativo_patrimonio"]').value = ativo.patrimonio || '';
+                document.querySelector('[name="ativo_local"]').value = ativo.local || '';
+                document.querySelector('[name="ativo_info"]').value = ativo.info || '';
+            }
+        }
+
+        // HISTÓRICO
+        async function loadHistorico() {
+            const relatorios = await dbGetAll('relatorios');
+            if (relatorios.length === 0) { document.getElementById('historicoBody').innerHTML = '<tr><td colspan="6" class="empty-state"><div class="empty-state-icon">📋</div><p>Nenhum relatório</p></td></tr>'; return; }
+            const sorted = relatorios.sort((a, b) => new Date(b.data) - new Date(a.data));
+            document.getElementById('historicoBody').innerHTML = sorted.map(r => `<tr data-search="${(r.empresaNome + r.clienteNome + r.ativoNome).toLowerCase()}"><td>${new Date(r.data).toLocaleString('pt-BR')}</td><td>${r.empresaNome || '-'}</td><td><strong>${r.clienteNome || '-'}</strong></td><td>${r.ativoNome || '-'}</td><td><span class="badge badge-${r.tipoManutencao === 'Emergencial' ? 'danger' : 'success'}">${r.tipoManutencao || '-'}</span></td><td><div class="btn-group"><button class="btn btn-primary btn-sm" onclick="loadReport(${r.id})">📂</button><button class="btn btn-success btn-sm" onclick="regeneratePDF(${r.id})">📄</button><button class="btn btn-danger btn-sm" onclick="deleteReport(${r.id})">🗑️</button></div></td></tr>`).join('');
+        }
+
+        function filterHistorico() {
+            const search = document.getElementById('searchHistorico').value.toLowerCase();
+            document.querySelectorAll('#historicoBody tr').forEach(row => { row.style.display = (row.getAttribute('data-search') || '').includes(search) ? '' : 'none'; });
+        }
+
+        async function deleteReport(id) { if (confirm('Excluir?')) { await dbDelete('relatorios', id); showToast('Excluído', 'info'); loadHistorico(); updateDashboard(); } }
+        async function clearAllReports() { if (confirm('Excluir TODOS?')) { await dbClear('relatorios'); showToast('Limpo', 'info'); loadHistorico(); updateDashboard(); } }
+            ];
+            if (tensaoNominal > 0) {
+                datasets.push({ label: 'Nominal', data: Array(5).fill(tensaoNominal), borderColor: '#27ae60', borderWidth: 2, borderDash: [10,5], pointRadius: 0, fill: false });
+                datasets.push({ label: 'Crítica (80%)', data: Array(5).fill(tensaoNominal * 0.8), borderColor: '#f39c12', borderWidth: 2, borderDash: [5,5], pointRadius: 0, fill: false });
+            }
+            const todosValores = [...valores.filter(v => v > 0), tensaoNominal, tensaoNominal * 0.8].filter(v => v > 0);
+            const minY = todosValores.length > 0 ? Math.min(...todosValores) * 0.95 : 0;
+            const maxY = todosValores.length > 0 ? Math.max(...todosValores) * 1.05 : 100;
+            descargaChart = new Chart(canvas, { type: 'line', data: { labels, datasets }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }, scales: { y: { min: minY > 0 ? minY : undefined, max: maxY, title: { display: true, text: 'Vcc', font: { size: 10 } } }, x: { title: { display: true, text: 'Tempo', font: { size: 10 } } } } } });
+        }
+
+        // TOAST
+        function showToast(msg, type = 'info') {
+            const existing = document.querySelector('.toast'); if (existing) existing.remove();
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.innerHTML = `${type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️'} ${msg}`;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        // GERAÇÃO PDF
+        function generatePDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const form = document.getElementById('upsForm');
+            const data = Object.fromEntries(new FormData(form));
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const margin = 15;
+            const contentWidth = pageWidth - (margin * 2);
+            let yPos = 20;
+
+            if (logoData) { try { doc.addImage(logoData, 'PNG', margin, yPos, 35, 18); } catch(e) {} }
+            doc.setFontSize(14); doc.setFont(undefined, 'bold'); doc.setTextColor(52, 152, 219);
+            doc.text('RELATORIO DE MANUTENCAO', pageWidth / 2, yPos + 8, { align: 'center' });
+            yPos += 30;
+
+            function addSection(title, items, startY) {
+                if (startY + 15 > pageHeight - 25) { doc.addPage(); startY = 15; }
+                doc.setFillColor(52, 152, 219);
+                doc.rect(margin, startY, contentWidth, 7, 'F');
+                doc.setFontSize(10); doc.setFont(undefined, 'bold'); doc.setTextColor(255, 255, 255);
+                doc.text(title, margin + 2, startY + 5);
+                startY += 10;
+                doc.autoTable({ startY, margin: { left: margin, right: margin }, head: [], body: items, theme: 'grid', styles: { fontSize: 8, cellPadding: 2 }, columnStyles: { 0: { fontStyle: 'bold', cellWidth: 55 }, 1: { cellWidth: contentWidth - 55 } } });
+                return doc.lastAutoTable.finalY + 8;
+            }
+
+            yPos = addSection('Empresa Responsavel', [['Nome', data.empresa_nome || ''], ['Razao Social', data.empresa_razao || ''], ['CNPJ', data.empresa_cnpj || ''], ['E-mail', data.empresa_email || ''], ['Telefone', data.empresa_tel || ''], ['Endereco', data.empresa_endereco || ''], ['Resp. Tecnico', data.empresa_rt || ''], ['Registro', data.empresa_registro || '']], yPos);
+            yPos = addSection('Cliente', [['Nome', data.cliente_nome || ''], ['E-mail', data.cliente_email || ''], ['Telefone', data.cliente_tel || ''], ['Endereco', data.cliente_endereco || '']], yPos);
+            yPos = addSection('Ativo', [['Nome', data.ativo_nome || ''], ['Local', data.ativo_local || ''], ['Marca', data.ativo_marca || ''], ['Modelo', data.ativo_modelo || ''], ['Potencia', data.ativo_potencia || ''], ['Patrimonio', data.ativo_patrimonio || '']], yPos);
+            yPos = addSection('Manutencao', [['Tipo', data.tipo_manutencao || ''], ['EPIs', data.epi_check || ''], ['Cond. Inseguras', data.cond_inseguras || '']], yPos);
+
+            const entDados = [];
+            if (data.ent_tensao_rs) entDados.push(['Tensao RS', data.ent_tensao_rs + ' V']);
+            if (data.ent_tensao_st) entDados.push(['Tensao ST', data.ent_tensao_st + ' V']);
+            if (data.ent_tensao_rt) entDados.push(['Tensao RT', data.ent_tensao_rt + ' V']);
+            if (data.ent_corrente_r) entDados.push(['Corrente R', data.ent_corrente_r + ' A']);
+            if (data.ent_corrente_s) entDados.push(['Corrente S', data.ent_corrente_s + ' A']);
+            if (data.ent_corrente_t) entDados.push(['Corrente T', data.ent_corrente_t + ' A']);
+            if (entDados.length > 0) yPos = addSection('Medicoes Entrada', entDados, yPos);
+
+            const saiDados = [];
+            if (data.sai_tensao_rs) saiDados.push(['Tensao RS', data.sai_tensao_rs + ' V']);
+            if (data.sai_tensao_st) saiDados.push(['Tensao ST', data.sai_tensao_st + ' V']);
+            if (data.sai_tensao_rt) saiDados.push(['Tensao RT', data.sai_tensao_rt + ' V']);
+            if (data.sai_corrente_r) saiDados.push(['Corrente R', data.sai_corrente_r + ' A']);
+            if (data.sai_corrente_s) saiDados.push(['Corrente S', data.sai_corrente_s + ' A']);
+            if (data.sai_corrente_t) saiDados.push(['Corrente T', data.sai_corrente_t + ' A']);
+            if (saiDados.length > 0) yPos = addSection('Medicoes Saida', saiDados, yPos);
+
+            const batDados = [];
+            if (data.bat_tensao_total) batDados.push(['Tensao Total', data.bat_tensao_total + ' Vcc']);
+            if (data.bat_cabos) batDados.push(['Cabos', data.bat_cabos]);
+            if (data.bat_carregador) batDados.push(['Carregador', data.bat_carregador]);
+            if (batDados.length > 0) yPos = addSection('Baterias', batDados, yPos);
+
+            // DESCARGA
+            const descargaValores = [parseFloat(data.descarga_v1)||0, parseFloat(data.descarga_v2)||0, parseFloat(data.descarga_v3)||0, parseFloat(data.descarga_v4)||0, parseFloat(data.descarga_v5)||0];
+            if (descargaValores.some(v => v > 0)) {
+                const intervalo = parseInt(data.descarga_intervalo) || 5;
+                const descDados = [];
+                descargaValores.forEach((v, i) => { if (v > 0) descDados.push(['Ponto ' + (i+1) + ' (' + (i*intervalo) + 'min)', v + ' Vcc']); });
+                yPos = addSection('Teste de Descarga', descDados, yPos);
+                if (yPos + 50 > pageHeight - 25) { doc.addPage(); yPos = 15; }
+                const descCanvas = document.getElementById('chartDescarga');
+                if (descCanvas && descargaChart) { try { doc.addImage(descCanvas.toDataURL('image/png'), 'PNG', margin, yPos, contentWidth, 45); yPos += 50; } catch(e) {} }
+            }
+
+            const opDados = [];
+            if (data.op_transf_bypass) opDados.push(['Bypass', data.op_transf_bypass]);
+            if (data.op_transf_inversor) opDados.push(['Inversor', data.op_transf_inversor]);
+            if (opDados.length > 0) yPos = addSection('Operacao UPS', opDados, yPos);
+
+            if (data.observacoes) yPos = addSection('Observacoes', [['', data.observacoes]], yPos);
+            if (data.gps_coords) yPos = addSection('Localizacao', [['GPS', data.gps_coords]], yPos);
+            yPos = addSection('Horarios', [['Inicio', data.hora_inicio ? new Date(data.hora_inicio).toLocaleString('pt-BR') : ''], ['Fim', data.hora_fim ? new Date(data.hora_fim).toLocaleString('pt-BR') : '']], yPos);
+
+            // FOTOS
+            if (photos.length > 0) {
+                if (yPos + 15 > pageHeight - 25) { doc.addPage(); yPos = 15; }
+                doc.setFillColor(52, 152, 219); doc.rect(margin, yPos, contentWidth, 7, 'F');
+                doc.setFontSize(10); doc.setFont(undefined, 'bold'); doc.setTextColor(255,255,255);
+                doc.text('Registro Fotografico', margin + 2, yPos + 5); yPos += 12;
+                for (let i = 0; i < photos.length; i += 2) {
+                    if (yPos + 55 > pageHeight - 25) { doc.addPage(); yPos = 15; }
+                    try { doc.addImage(photos[i].data, 'JPEG', margin, yPos, 80, 50); doc.setFontSize(8); doc.setTextColor(0,0,0); doc.text(photos[i].caption || '', margin, yPos + 54); } catch(e) {}
+                    if (photos[i+1]) { try { doc.addImage(photos[i+1].data, 'JPEG', pageWidth/2+5, yPos, 80, 50); doc.text(photos[i+1].caption || '', pageWidth/2+5, yPos + 54); } catch(e) {} }
+                    yPos += 60;
+                }
+            }
+
+            // ASSINATURAS
+            if (yPos + 35 > pageHeight - 25) { doc.addPage(); yPos = 15; }
+            doc.setFillColor(52, 152, 219); doc.rect(margin, yPos, contentWidth, 7, 'F');
+            doc.setFontSize(10); doc.setFont(undefined, 'bold'); doc.setTextColor(255,255,255);
+            doc.text('Assinaturas', margin + 2, yPos + 5); yPos += 12;
+            doc.setFontSize(8); doc.setTextColor(0,0,0);
+            doc.text('Tecnico: ' + (data.nome_tecnico || ''), margin, yPos);
+            doc.text('Cliente: ' + (data.nome_cliente || ''), pageWidth/2+5, yPos); yPos += 5;
+            if (signatureData.signatureTecnico) { try { doc.addImage(signatureData.signatureTecnico, 'PNG', margin, yPos, 50, 18); } catch(e) {} }
+            if (signatureData.signatureCliente) { try { doc.addImage(signatureData.signatureCliente, 'PNG', pageWidth/2+5, yPos, 50, 18); } catch(e) {} }
+
+            // FOOTER
+            const totalPages = doc.internal.getNumberOfPages();
+            for (let i = 1; i <= totalPages; i++) { doc.setPage(i); doc.setFontSize(7); doc.setTextColor(100,100,100); doc.text((data.empresa_nome || '') + ' | Pag ' + i + '/' + totalPages, pageWidth/2, pageHeight - 8, { align: 'center' }); }
+
+            doc.save('Relatorio_' + (data.ativo_nome || 'UPS').replace(/[^a-z0-9]/gi, '_') + '_' + new Date().toISOString().split('T')[0] + '.pdf');
+            showToast('PDF gerado!', 'success');
+        }
+
+        // INICIALIZAÇÃO
+        document.addEventListener('DOMContentLoaded', async () => {
+            await initDB();
+            await carregarDadosPadrao();
+            updateDashboard();
+            loadSelects();
+            setupSignature('signatureTecnico');
+            setupSignature('signatureCliente');
+            const now = new Date();
+            document.querySelector('[name="hora_inicio"]').value = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+        });
+    </script>
+</body>
+</html>
